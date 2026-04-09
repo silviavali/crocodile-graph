@@ -4,289 +4,200 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Crocodile Graph Tool</title>
-
-  <!-- Load D3 with fallback -->
   <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script>
-    // Fallback if CDN fails (common cause of "d3 is not defined")
-    window.addEventListener("error", function(e) {
-      if (typeof d3 === "undefined") {
-        console.warn("Primary D3 load failed, loading fallback...");
-        const script = document.createElement("script");
-        script.src = "https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js";
-        document.head.appendChild(script);
-      }
-    });
-  </script>
-
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f7fb;
-      margin: 0;
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
+    body { font-family: Arial, sans-serif; background: #f5f7fb; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
     h1 { margin: 10px 0; }
-
-    .controls {
-      align-items: end;
-      background: white;
-      padding: 12px;
-      border-radius: 10px;
-      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 10px;
-      width: 100%;
-      max-width: 800px;
-      margin-bottom: 10px;
-    }
-
-    input {
-      padding: 8px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      height: 38px;
-    }
-
-    button {
-      background: #0077cc;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      height: 38px;
-      cursor: pointer;
-    }
-
-    button {
-      background: #0077cc;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-
-    .chart {
-      width: 100%;
-      max-width: 800px;
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-      padding: 10px;
-    }
-
+    .controls { align-items: end; background: white; padding: 12px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; width: 100%; max-width: 800px; margin-bottom: 10px; }
+    input { padding: 8px; border: 1px solid #ccc; border-radius: 6px; height: 38px; }
+    button { background: #0077cc; color: white; border: none; border-radius: 6px; height: 38px; cursor: pointer; }
+    .chart { width: 100%; max-width: 800px; background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); padding: 10px; margin-top: 16px; }
     svg { width: 100%; height: 400px; }
-
-    .tooltip {
-      position: absolute;
-      background: black;
-      color: white;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 12px;
-      pointer-events: none;
-      opacity: 0;
-    }
+    .tooltip { position: absolute; background: black; color: white; padding: 6px 10px; border-radius: 6px; font-size: 12px; pointer-events: none; opacity: 0; }
   </style>
 </head>
 <body>
-
 <h1>Crocodile Graph Tool</h1>
-
 <div class="controls">
-  <label style="display:flex; flex-direction:column; gap:4px;">
-    Correction Range Min
-    <input id="xMin" type="number" value="-6">
-  </label>
-
-  <label style="display:flex; flex-direction:column; gap:4px;">
-    Correction Range Max
-    <input id="xMax" type="number" value="6">
-  </label>
-
-  <label style="display:flex; flex-direction:column; gap:4px;">
-    Time Start (HHMM)
-    <input id="yMin" type="number" value="1000">
-  </label>
-
-  <label style="display:flex; flex-direction:column; gap:4px;">
-    Time End (HHMM)
-    <input id="yMax" type="number" value="1600">
-  </label>
-
-  <label style="display:flex; flex-direction:column; gap:4px;">
-    Search Time (HHMM)
-    <input id="inputTime" type="number" value="1300">
-  </label>
-
+  <label style="display:flex; flex-direction:column; gap:4px;">Correction Range Min<input id="xMin" type="number" value="-6"></label>
+  <label style="display:flex; flex-direction:column; gap:4px;">Correction Range Max<input id="xMax" type="number" value="6"></label>
+  <label style="display:flex; flex-direction:column; gap:4px;">Time Start (HHMM)<input id="yMin" type="number" value="1000"></label>
+  <label style="display:flex; flex-direction:column; gap:4px;">Time End (HHMM)<input id="yMax" type="number" value="1600"></label>
+  <label style="display:flex; flex-direction:column; gap:4px;">Search Time (HHMM)<input id="inputTime" type="number" value="1300"></label>
   <button onclick="updateGraph()">Update</button>
 </div>
-
-<div class="chart">
-  <svg></svg>
+<div class="chart"><h2 style="margin: 8px 0 12px 0; font-size: 20px;">Tidal time correction</h2><svg id="timeChart"></svg></div>
+<div class="controls" id="heightControls" style="margin-top: 24px;">
+  <label style="display:flex; flex-direction:column; gap:4px;">Height Correction Min<input id="hxMin" type="number" value="-6"></label>
+  <label style="display:flex; flex-direction:column; gap:4px;">Height Correction Max<input id="hxMax" type="number" value="6"></label>
+  <label style="display:flex; flex-direction:column; gap:4px;">Meters Start<input id="mStart" type="number" step="0.1" value="0"></label>
+  <label style="display:flex; flex-direction:column; gap:4px;">Meters End<input id="mEnd" type="number" step="0.1" value="5"></label>
+  <label style="display:flex; flex-direction:column; gap:4px;">Search Meters<input id="mValue" type="number" step="0.1" value="2.5"></label>
+  <button onclick="updateGraph()">Update</button>
 </div>
-
+<div class="chart"><h2 style="margin: 8px 0 12px 0; font-size: 20px;">Tidal height correction</h2><svg id="heightChart"></svg></div>
 <div class="tooltip" id="tooltip"></div>
-
 <script>
-// Wait until D3 is loaded before running
 function initWhenReady() {
-  if (typeof d3 === "undefined") {
-    setTimeout(initWhenReady, 50);
-    return;
+  if (typeof d3 === 'undefined') { setTimeout(initWhenReady, 50); return; }
+
+  const svg = d3.select('#timeChart');
+  const heightSvg = d3.select('#heightChart');
+  const tooltip = d3.select('#tooltip');
+
+  function hhmmToMinutes(hhmm) {
+    const hours = Math.floor(hhmm / 100);
+    const minutes = hhmm % 100;
+    return hours * 60 + minutes;
   }
 
-  const svg = d3.select("svg");
-  const tooltip = d3.select("#tooltip");
+  function minutesToHHMM(totalMinutes) {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours.toString().padStart(2,'0')}${minutes.toString().padStart(2,'0')}`;
+  }
 
-  function draw(xMin, xMax, yMin, yMax, selectedTime) {
-    function hhmmToMinutes(hhmm) {
-      const hours = Math.floor(hhmm / 100);
-      const minutes = hhmm % 100;
-      return hours * 60 + minutes;
-    }
-
-    function minutesToHHMM(totalMinutes) {
-      const hours = Math.floor(totalMinutes / 60);
-      const minutes = totalMinutes % 60;
-      return `${hours.toString().padStart(2,'0')}${minutes.toString().padStart(2,'0')}`;
-    }
-    svg.selectAll("*").remove();
-
+  function drawTimeGraph(xMin, xMax, yMin, yMax, selectedTime) {
+    svg.selectAll('*').remove();
     const width = svg.node().clientWidth - 60;
     const height = 350;
     const margin = { top: 20, right: 20, bottom: 40, left: 50 };
-
-    const g = svg.append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
-
-    const xScale = d3.scaleLinear()
-      .domain([xMin, xMax])
-      .range([0, width]);
+    const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
     const yMinMinutes = hhmmToMinutes(yMin);
     const yMaxMinutes = hhmmToMinutes(yMax);
     const selectedMinutes = hhmmToMinutes(selectedTime);
 
-    const yScale = d3.scaleLinear()
-      .domain([yMinMinutes, yMaxMinutes])
-      .range([height, 0]);
+    const xScale = d3.scaleLinear().domain([xMin, xMax]).range([0, width]);
+    const yScale = d3.scaleLinear().domain([yMinMinutes, yMaxMinutes]).range([height, 0]);
 
-    const xAxis = d3.axisBottom(xScale).ticks(Math.abs(xMax - xMin)+1)
-      .tickFormat(d => d.toString().padStart(4,'0'));
-
+    const xAxis = d3.axisBottom(xScale).ticks(Math.abs(xMax - xMin) + 1);
     const tickValues = [];
-    const startTick = Math.ceil(yMinMinutes / 15) * 15;
-    for (let t = startTick; t <= yMaxMinutes; t += 15) tickValues.push(t);
+    for (let t = Math.ceil(yMinMinutes / 15) * 15; t <= yMaxMinutes; t += 15) tickValues.push(t);
+    const yAxis = d3.axisLeft(yScale).tickValues(tickValues).tickFormat(d => minutesToHHMM(d));
 
-    const yAxis = d3.axisLeft(yScale)
-      .tickValues(tickValues)
-      .tickFormat(d => minutesToHHMM(d));
+    g.append('g').attr('transform', `translate(0, ${height})`).call(xAxis);
+    g.append('g').call(yAxis);
 
-    g.append("g")
-      .attr("transform", `translate(0, ${height})`)
-      .call(xAxis);
+    g.append('line')
+      .attr('x1', xScale(xMin)).attr('y1', yScale(yMinMinutes))
+      .attr('x2', xScale(xMax)).attr('y2', yScale(yMaxMinutes))
+      .attr('stroke', '#0077cc').attr('stroke-width', 3);
 
-    g.append("g").call(yAxis);
+    const correction = xMin + ((selectedMinutes - yMinMinutes) * (xMax - xMin)) / (yMaxMinutes - yMinMinutes);
+    const cx = xScale(correction);
+    const cy = yScale(selectedMinutes);
 
-    const lineData = [
-      { x: xMin, y: yMinMinutes },
-      { x: xMax, y: yMaxMinutes }
-    ];
+    g.append('line').attr('x1', 0).attr('x2', width).attr('y1', cy).attr('y2', cy).attr('stroke', 'red').attr('stroke-dasharray', '4');
+    g.append('line').attr('x1', cx).attr('x2', cx).attr('y1', cy).attr('y2', height).attr('stroke', 'red').attr('stroke-dasharray', '4');
+    g.append('circle').attr('cx', cx).attr('cy', cy).attr('r', 5).attr('fill', 'red');
 
-    const line = d3.line()
-      .x(d => xScale(d.x))
-      .y(d => yScale(d.y));
+    // Display calculated correction at the bottom of the second table
+    g.append('text')
+      .attr('x', width / 2)
+      .attr('y', height + 30)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '14px')
+      .attr('font-weight', '600')
+      .text(`Calculated correction: ${correction.toFixed(2)}`);
 
-    g.append("path")
-      .datum(lineData)
-      .attr("fill", "none")
-      .attr("stroke", "#0077cc")
-      .attr("stroke-width", 3)
-      .attr("d", line);
-
-    function getCorrection(time) {
-      const timeMinutes = hhmmToMinutes(time);
-      return xMin + ((timeMinutes - yMinMinutes) * (xMax - xMin)) / (yMaxMinutes - yMinMinutes);
-    }
-
-    function getCorrectionFromMinutes(timeMinutes) {
-      return xMin + ((timeMinutes - yMinMinutes) * (xMax - xMin)) / (yMaxMinutes - yMinMinutes);
-    }
-
-    if (selectedMinutes >= yMinMinutes && selectedMinutes <= yMaxMinutes) {
-      const correction = getCorrection(selectedTime);
-      const cx = xScale(correction);
-      const cy = yScale(selectedMinutes);
-
-      g.append("line")
-        .attr("x1", 0)
-        .attr("x2", width)
-        .attr("y1", cy)
-        .attr("y2", cy)
-        .attr("stroke", "red")
-        .attr("stroke-dasharray", "4");
-
-      g.append("line")
-        .attr("x1", cx)
-        .attr("x2", cx)
-        .attr("y1", cy)
-        .attr("y2", height)
-        .attr("stroke", "red")
-        .attr("stroke-dasharray", "4");
-
-      g.append("circle")
-        .attr("cx", cx)
-        .attr("cy", cy)
-        .attr("r", 5)
-        .attr("fill", "red");
-    }
-
-    svg.append("rect")
-      .attr("transform", `translate(${margin.left},${margin.top})`)
-      .attr("width", width)
-      .attr("height", height)
-      .attr("fill", "transparent")
-      .on("mousemove", function(event) {
+    svg.append('rect')
+      .attr('transform', `translate(${margin.left},${margin.top})`)
+      .attr('width', width).attr('height', height)
+      .attr('fill', 'transparent')
+      .on('mousemove', function(event) {
         const [mx, my] = d3.pointer(event);
         const yVal = yScale.invert(my);
         if (yVal < yMinMinutes || yVal > yMaxMinutes) return;
-
-        const correction = getCorrectionFromMinutes(yVal);
-
-        tooltip
-          .style("opacity", 1)
-          .style("left", (event.pageX + 10) + "px")
-          .style("top", (event.pageY - 20) + "px")
-          .html(`Time: ${minutesToHHMM(Math.round(yVal))}<br>Correction: ${correction.toFixed(2)}`);
+        const corr = xMin + ((yVal - yMinMinutes) * (xMax - xMin)) / (yMaxMinutes - yMinMinutes);
+        tooltip.style('opacity', 1)
+          .style('left', (event.pageX + 10) + 'px')
+          .style('top', (event.pageY - 20) + 'px')
+          .html(`Time: ${minutesToHHMM(Math.round(yVal))}<br>Correction: ${corr.toFixed(2)}`);
       })
-      .on("mouseleave", () => tooltip.style("opacity", 0));
+      .on('mouseleave', () => tooltip.style('opacity', 0));
+  }
+
+  function drawHeightGraph(xMin, xMax, mStart, mEnd, mValue) {
+    heightSvg.selectAll('*').remove();
+    const width = heightSvg.node().clientWidth - 60;
+    const height = 350;
+    const margin = { top: 20, right: 20, bottom: 40, left: 60 };
+    const g = heightSvg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const startCm = mStart * 100;
+    const endCm = mEnd * 100;
+    const valueCm = mValue * 100;
+
+    const xScale = d3.scaleLinear().domain([xMin, xMax]).range([0, width]);
+    const yScale = d3.scaleLinear().domain([startCm, endCm]).range([height, 0]);
+
+    g.append('g').attr('transform', `translate(0, ${height})`).call(d3.axisBottom(xScale));
+
+    const meterTicks = [];
+    // Dynamic tick spacing for small and large meter ranges
+    const rangeCm = Math.abs(endCm - startCm);
+    let stepSize;
+    if (rangeCm <= 200) {
+      stepSize = 10;      // 0.1m
+    } else if (rangeCm <= 1000) {
+      stepSize = 100;     // 1m
+    } else {
+      stepSize = 200;     // 2m
+    }
+
+    const tickStep = startCm <= endCm ? stepSize : -stepSize;
+    for (let cm = startCm; tickStep > 0 ? cm <= endCm : cm >= endCm; cm += tickStep) {
+      meterTicks.push(cm);
+    }
+    g.append('g').call(d3.axisLeft(yScale).tickValues(meterTicks).tickFormat(d => `${(d/100).toFixed(1)}m`));
+
+    g.append('line')
+      .attr('x1', xScale(xMin)).attr('y1', yScale(startCm))
+      .attr('x2', xScale(xMax)).attr('y2', yScale(endCm))
+      .attr('stroke', '#009966').attr('stroke-width', 3);
+
+    const correction = xMin + ((valueCm - startCm) * (xMax - xMin)) / (endCm - startCm);
+    const cx = xScale(correction);
+    const cy = yScale(valueCm);
+
+    g.append('line').attr('x1', 0).attr('x2', width).attr('y1', cy).attr('y2', cy).attr('stroke', 'red').attr('stroke-dasharray', '4');
+    g.append('line').attr('x1', cx).attr('x2', cx).attr('y1', cy).attr('y2', height).attr('stroke', 'red').attr('stroke-dasharray', '4');
+    g.append('circle').attr('cx', cx).attr('cy', cy).attr('r', 5).attr('fill', 'red');
+
+    // Display calculated correction at the bottom of the second table
+    g.append('text')
+      .attr('x', width / 2)
+      .attr('y', height + 30)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '14px')
+      .attr('font-weight', '600')
+      .text(`Calculated correction: ${correction.toFixed(2)}`);
   }
 
   window.updateGraph = function() {
-    const xMin = +document.getElementById("xMin").value;
-    const xMax = +document.getElementById("xMax").value;
-    const yMin = +document.getElementById("yMin").value;
-    const yMax = +document.getElementById("yMax").value;
-    const time = +document.getElementById("inputTime").value;
+    const xMin = +document.getElementById('xMin').value;
+    const xMax = +document.getElementById('xMax').value;
+    const yMin = +document.getElementById('yMin').value;
+    const yMax = +document.getElementById('yMax').value;
+    const time = +document.getElementById('inputTime').value;
+    const hxMin = +document.getElementById('hxMin').value;
+    const hxMax = +document.getElementById('hxMax').value;
+    const mStart = +document.getElementById('mStart').value;
+    const mEnd = +document.getElementById('mEnd').value;
+    const mValue = +document.getElementById('mValue').value;
+    if (xMin === xMax || yMin === yMax || hxMin === hxMax || mStart === mEnd) { alert('Invalid ranges: min and max cannot be equal'); return; }
+    drawTimeGraph(xMin, xMax, yMin, yMax, time);
+    drawHeightGraph(hxMin, hxMax, mStart, mEnd, mValue);
+  };
 
-    // Allow both increasing and decreasing ranges
-    if (xMin === xMax || yMin === yMax) {
-      alert("Invalid ranges: min and max cannot be equal");
-      return;
-    }
-
-    draw(xMin, xMax, yMin, yMax, time);
-  }
+  // basic smoke test cases
+  console.assert(hhmmToMinutes(1000) === 600, '1000 should be 600 minutes');
+  console.assert(minutesToHHMM(615) === '1015', '615 should be 1015');
 
   updateGraph();
 }
-
 initWhenReady();
 </script>
-
 </body>
 </html>
