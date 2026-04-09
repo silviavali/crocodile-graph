@@ -143,6 +143,17 @@ function initWhenReady() {
   const tooltip = d3.select("#tooltip");
 
   function draw(xMin, xMax, yMin, yMax, selectedTime) {
+    function hhmmToMinutes(hhmm) {
+      const hours = Math.floor(hhmm / 100);
+      const minutes = hhmm % 100;
+      return hours * 60 + minutes;
+    }
+
+    function minutesToHHMM(totalMinutes) {
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return `${hours.toString().padStart(2,'0')}${minutes.toString().padStart(2,'0')}`;
+    }
     svg.selectAll("*").remove();
 
     const width = svg.node().clientWidth - 60;
@@ -156,14 +167,24 @@ function initWhenReady() {
       .domain([xMin, xMax])
       .range([0, width]);
 
+    const yMinMinutes = hhmmToMinutes(yMin);
+    const yMaxMinutes = hhmmToMinutes(yMax);
+    const selectedMinutes = hhmmToMinutes(selectedTime);
+
     const yScale = d3.scaleLinear()
-      .domain([yMin, yMax])
+      .domain([yMinMinutes, yMaxMinutes])
       .range([height, 0]);
 
     const xAxis = d3.axisBottom(xScale).ticks(Math.abs(xMax - xMin)+1)
       .tickFormat(d => d.toString().padStart(4,'0'));
 
-    const yAxis = d3.axisLeft(yScale).ticks(7);
+    const tickValues = [];
+    const startTick = Math.ceil(yMinMinutes / 15) * 15;
+    for (let t = startTick; t <= yMaxMinutes; t += 15) tickValues.push(t);
+
+    const yAxis = d3.axisLeft(yScale)
+      .tickValues(tickValues)
+      .tickFormat(d => minutesToHHMM(d));
 
     g.append("g")
       .attr("transform", `translate(0, ${height})`)
@@ -172,8 +193,8 @@ function initWhenReady() {
     g.append("g").call(yAxis);
 
     const lineData = [
-      { x: xMin, y: yMin },
-      { x: xMax, y: yMax }
+      { x: xMin, y: yMinMinutes },
+      { x: xMax, y: yMaxMinutes }
     ];
 
     const line = d3.line()
@@ -188,13 +209,18 @@ function initWhenReady() {
       .attr("d", line);
 
     function getCorrection(time) {
-      return xMin + ((time - yMin) * (xMax - xMin)) / (yMax - yMin);
+      const timeMinutes = hhmmToMinutes(time);
+      return xMin + ((timeMinutes - yMinMinutes) * (xMax - xMin)) / (yMaxMinutes - yMinMinutes);
     }
 
-    if (selectedTime >= yMin && selectedTime <= yMax) {
+    function getCorrectionFromMinutes(timeMinutes) {
+      return xMin + ((timeMinutes - yMinMinutes) * (xMax - xMin)) / (yMaxMinutes - yMinMinutes);
+    }
+
+    if (selectedMinutes >= yMinMinutes && selectedMinutes <= yMaxMinutes) {
       const correction = getCorrection(selectedTime);
       const cx = xScale(correction);
-      const cy = yScale(selectedTime);
+      const cy = yScale(selectedMinutes);
 
       g.append("line")
         .attr("x1", 0)
@@ -226,16 +252,16 @@ function initWhenReady() {
       .attr("fill", "transparent")
       .on("mousemove", function(event) {
         const [mx, my] = d3.pointer(event);
-        const yVal = yScale.invert(my - margin.top);
-        if (yVal < yMin || yVal > yMax) return;
+        const yVal = yScale.invert(my);
+        if (yVal < yMinMinutes || yVal > yMaxMinutes) return;
 
-        const correction = getCorrection(yVal);
+        const correction = getCorrectionFromMinutes(yVal);
 
         tooltip
           .style("opacity", 1)
           .style("left", (event.pageX + 10) + "px")
           .style("top", (event.pageY - 20) + "px")
-          .html(`Time: ${Math.round(yVal)}<br>Correction: ${correction.toFixed(2)}`);
+          .html(`Time: ${minutesToHHMM(Math.round(yVal))}<br>Correction: ${correction.toFixed(2)}`);
       })
       .on("mouseleave", () => tooltip.style("opacity", 0));
   }
